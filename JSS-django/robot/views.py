@@ -21,6 +21,8 @@ from .models import *
 from .serializers import *
 from .words import tag
 
+authKey = 'INITKEYmIVot2km'
+
 
 class ChatRoomViewSet(viewsets.ModelViewSet):
     """
@@ -262,7 +264,7 @@ def qqbot(request):
     def reply(msg: dict, replyMsg: str):
         mirai_api = {
             'host': 'http://127.0.0.1:8080',
-            'authKey': 'INITKEYcp7KhYss',
+            'authKey': authKey,
             'qq': '2138241371',
             'session': ''
         }
@@ -432,7 +434,7 @@ def replyQQ(request):
     replyMsg = request.data['content']
     mirai_api = {
         'host': 'http://127.0.0.1:8080',
-        'authKey': 'INITKEYmIVot2km',
+        'authKey': authKey,
         'qq': '2177238858',
         'session': ''
     }
