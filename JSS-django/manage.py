@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
+import logging
+import logging.config
 import os
 import sys
-import logging, logging.config
 
 
 def main():
