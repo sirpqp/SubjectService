@@ -1,0 +1,25 @@
+{
+    "button": [
+        {
+            "type": "click",
+            "name": "帮助说明",
+            "key": "help"
+        },
+        {
+            "type": "click",
+            "name": "人工服务",
+            "key": "service"
+        },
+        {
+            "name": "个人中心",
+            "sub_button": [
+                {
+                    "type": "view",
+                    "name": "授权登录",
+                    // "url":"http://wx.juhe.com.cn/wx/auth"
+                    "url": "https://open.weixin.qq.com/connect/oauth2/authorize?appid=wx5c508e7ffd72e463&redirect_uri=http%3a%2f%2fapi.jlss.vip%2fwx%2fauth&response_type=code&scope=snsapi_base&state=reg#wechat_redirect"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,206 @@
+// https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Get_materials_list.html
+// POST https://api.weixin.qq.com/cgi-bin/material/batchget_material?access_token=ACCESS_TOKEN
+// {
+//     "type":"news",
+//     "offset":0,
+//     "count":20
+// }
+{
+    "item": [
+        {
+            "media_id": "aRGRZQzzMPvVvdIHVYUAg1wqAGjBEO8fgmFo7JN2DLM",
+            "content": {
+                "news_item": [
+                    {
+                        "title": "欢迎关注",
+                        "author": "",
+                        "digest": "欢迎词1 授权说明2 查询说明3 人工说明",
+                        "content": "<p>欢迎词</p><p>1 授权说明</p><p>2 查询说明</p><p>3 人工说明<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg2SafG4b4yct5YAHy78s36U",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000005&idx=1&sn=0c81912b867505952cb69ca613792ea8&chksm=1f86a3f528f12ae33f91ae2f1c14723b012cb8350630f1c96d3ff8a47b0bf260df9fe7a284d4#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykZZ3A2rqw7icamANAmbbXazPOnlKLibzibf2edlJickyA9CDIeCuFPpWIvWdNqFkgv87khkNdiaTtPNhIA/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    },
+                    {
+                        "title": "授权说明",
+                        "author": "",
+                        "digest": "关于如何通过地址取得授权授权有效期15天",
+                        "content": "<p>关于如何通过地址取得授权</p><p>授权有效期15天<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg2ngQMarTYM57Bc3Ln7gIoQ",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000005&idx=2&sn=6af032d3c54750d53b148c6c6125cb7b&chksm=1f86a3f528f12ae3e29dc570442b4387808bab74cfbc1118235105901dfa6e09b7c84fa5ee65#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykZZ3A2rqw7icamANAmbbXazP8bvMzZicpcSTiaoQfD3WawL2zZHtqEMib6xm5Ptp2pRibtBMEKxibf733DQ/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    },
+                    {
+                        "title": "查找说明",
+                        "author": "",
+                        "digest": "关于如何查找全文",
+                        "content": "<p>关于如何查找全文<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAgysymyAiSRNrBf5zvuvBqIQ",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000005&idx=3&sn=5506daa5312917cc71222d3b0b79d7d9&chksm=1f86a3f528f12ae32eb26ecb878d331b2f3928d259fb851c34f2d8336e7788aff35220f38f93#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykZZ3A2rqw7icamANAmbbXazPMSRJdtJryVY1Nib7e6hoo4gITbdrWM1nPyxzFMka3ToI6ZiaGHuB4wbg/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    },
+                    {
+                        "title": "人工服务",
+                        "author": "",
+                        "digest": "如何转人工服务",
+                        "content": "<p>如何转人工服务<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg2zF2uPweB8N8QLt75l5JZE",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000005&idx=4&sn=7d29013b745ba24d0b170866d613c4a0&chksm=1f86a3f528f12ae3b68461393afc6708bf024c334ba5ac2305a317cbbb5c1a538aeb9d52fb43#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykZZ3A2rqw7icamANAmbbXazP6KJRjRtSZ0PicDcyweR4RMCEMYiayQgN46271yhBLiaViaaiblwaNrbjN8w/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    }
+                ],
+                "create_time": 1597198069,
+                "update_time": 1597652693
+            },
+            "update_time": 1597652693
+        },
+        {
+            "media_id": "aRGRZQzzMPvVvdIHVYUAgxWCFbF2u4tP8wdRgZLYvF8",
+            "content": {
+                "news_item": [
+                    {
+                        "title": "人工服务",
+                        "author": "",
+                        "digest": "如何转人工服务",
+                        "content": "<p>如何转人工服务<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg7bRxCfG4aiyz6C7UvzN3L8",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000004&idx=1&sn=266b8dbc2994f630f3a0243201831fdf&chksm=1f86a3f428f12ae2f9b8823fa8c322de32d2ecda1e058cd429b8718c7cda78fe42e046c6f3d3#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykZZ3A2rqw7icamANAmbbXazPGSzwEyvp2iaicu2cN79DicEI4yP4I9XPnmp4xxNXzYhNLoB3uN7MrpmWw/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    }
+                ],
+                "create_time": 1597197948,
+                "update_time": 1597652482
+            },
+            "update_time": 1597652482
+        },
+        {
+            "media_id": "aRGRZQzzMPvVvdIHVYUAg2Ux1Vs1-1WtIC9PH6-WkQo",
+            "content": {
+                "news_item": [
+                    {
+                        "title": "查找说明",
+                        "author": "",
+                        "digest": "关于如何查找全文",
+                        "content": "<p>关于如何查找全文<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg2MF1cTyiCtF8bVgNK_7njQ",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000003&idx=1&sn=3cafe1790d2caf3b02f3fd005e1a483f&chksm=1f86a3f328f12ae55d993ae35769a754a5de979454ab79faf35e7e28edc8e7e60dc385d6b9d6#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykZZ3A2rqw7icamANAmbbXazPNeO6db2xH8htxR9H5ibeeYibrq6rWq2wBnapy2bmobAzQqS5ZoaOfy7w/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    }
+                ],
+                "create_time": 1597197905,
+                "update_time": 1597652525
+            },
+            "update_time": 1597652525
+        },
+        {
+            "media_id": "aRGRZQzzMPvVvdIHVYUAgxHljEY9ALgqrcdMZ8YFm7A",
+            "content": {
+                "news_item": [
+                    {
+                        "title": "授权说明",
+                        "author": "",
+                        "digest": "关于如何通过地址取得授权授权有效期15天",
+                        "content": "<p>关于如何通过地址取得授权</p><p>授权有效期15天<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg3L4S4jlrMjPNMfFCNAPlxA",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000002&idx=1&sn=3e1a9ee2eef2caec9130fc627336e20a&chksm=1f86a3f228f12ae43bf40b43bb541d223fd107c177b4c49d49a2ed08281ec1c76c0759018a0f#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykZZ3A2rqw7icamANAmbbXazPAr9q5QQAI1U9qeDwhhut8EMibcs2lg7RzOXoEHsJQYEwiczXRXdgydPw/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    }
+                ],
+                "create_time": 1597197850,
+                "update_time": 1597652552
+            },
+            "update_time": 1597652552
+        },
+        {
+            "media_id": "aRGRZQzzMPvVvdIHVYUAg239kv_uQodYBVarxo9d19U",
+            "content": {
+                "news_item": [
+                    {
+                        "title": "聚联搜索帮助文档",
+                        "author": "",
+                        "digest": "1 如何取得授权2 如何查找3 如何转人工",
+                        "content": "<p>1 如何取得授权</p><p>2 如何查找</p><p>3 如何转人工<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg3L4S4jlrMjPNMfFCNAPlxA",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000001&idx=1&sn=1c4b764035133648d8820af663e09bea&chksm=1f86a3f128f12ae7f66d462c572ade0b01488c749af491da1a0033263a2cb7f35472756ee6ae#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykY5Y0uuYMrHRH41VbAWTQoyia7lribq0upy5xibA6PIMziaKW5YjBvRbhYMzMNs5TKM1X1PNdUWStfiaWg/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    },
+                    {
+                        "title": "授权说明",
+                        "author": "",
+                        "digest": "关于如何通过地址取得授权授权有效期15天",
+                        "content": "<p>关于如何通过地址取得授权</p><p>授权有效期15天<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg2MF1cTyiCtF8bVgNK_7njQ",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000001&idx=2&sn=b27a149eb59a9b57337e6e2d36c72a3e&chksm=1f86a3f128f12ae77981d28b15d843f37292fd61b742f0d77f0aedcdcd7864bdbfa2fc9865b6#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykY5Y0uuYMrHRH41VbAWTQoyYK4eQoDysVYsjERwFfMiaMxUdnndw7d8kD2Zmb999IicPUSkjsYmceQA/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    },
+                    {
+                        "title": "查找说明",
+                        "author": "",
+                        "digest": "关于如何查找全文",
+                        "content": "<p>关于如何查找全文<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg7bRxCfG4aiyz6C7UvzN3L8",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000001&idx=3&sn=ba35bffe041c8b846f8c45cfc9b4cb8a&chksm=1f86a3f128f12ae79e09e200abfea25ec9ec87158da9f3030250246cd3ee6cd18ddd8263825a#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykY5Y0uuYMrHRH41VbAWTQoyRqvTrByLjvZibtOricydZwfHSSGNUrBFyfpYmLL2xgFHmKzFNASAShAA/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    },
+                    {
+                        "title": "人工服务",
+                        "author": "",
+                        "digest": "如何转人工服务",
+                        "content": "<p>如何转人工服务<br  /></p>",
+                        "content_source_url": "",
+                        "thumb_media_id": "aRGRZQzzMPvVvdIHVYUAg9uXp8_QYQ5wwavTeSOwEEI",
+                        "show_cover_pic": 0,
+                        "url": "http://mp.weixin.qq.com/s?__biz=MzA4MjI5NDY4Nw==&mid=100000001&idx=4&sn=9c0f7a5d2eaa9805a28d3e84be4e15b7&chksm=1f86a3f128f12ae744237c45078b2c0880829c33b42660f127c6fdb36852dc5777e346d36427#rd",
+                        "thumb_url": "http://mmbiz.qpic.cn/mmbiz_jpg/GWvAyDwuykY5Y0uuYMrHRH41VbAWTQoyibemE69xwR4hHibv1HiaE2ia7x83JR4mHO0YJ6I86KBr7IH69RDCg4Kgew/0?wx_fmt=jpeg",
+                        "need_open_comment": 0,
+                        "only_fans_can_comment": 0
+                    }
+                ],
+                "create_time": 1596725790,
+                "update_time": 1597198522
+            },
+            "update_time": 1597198522
+        }
+    ],
+    "total_count": 5,
+    "item_count": 5
+}

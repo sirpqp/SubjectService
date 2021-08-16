@@ -1,0 +1,112 @@
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <!-- {% load static %} -->
+    <!-- <link rel="stylesheet" type="text/css" href="{% static 'wx/weui.min.css' %}" /> -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src="http://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+    <script src="{% static 'rest_framework/js/jquery-3.4.1.min.js' %}"></script>
+    <script>
+        wx.config({
+            'debug': false, // 开启调试模式,调用的所有api的返回值会在客户端alert出来，若要查看传入的参数，可以在pc端打开，参数信息会通过log打出，仅在pc端时才会打印。
+            'appId': 'wx5c508e7ffd72e463', // 必填，公众号的唯一标识
+            'timestamp': '{{timestamp}}', // 必填，生成签名的时间戳
+            'nonceStr': '342t5@#!~$fdghwer@#dsg', // 必填，生成签名的随机串
+            'signature': '{{signature}}',// 必填，签名
+            'jsApiList': ['openLocation', 'getLocation'] // 必填，需要使用的JS接口列表
+        });
+        wx.ready(function () {
+            // config信息验证后会执行ready方法，所有接口调用都必须在config接口获得结果之后，config是一个客户端的异步操作，所以如果需要在页面加载时就调用相关接口，则须把相关接口放在ready函数中调用来确保正确执行。对于用户触发时才调用的接口，则可以直接调用，不需要放在ready函数中。
+            wx.getLocation({
+                type: 'wgs84', // 默认为wgs84的gps坐标，如果要返回直接给openLocation用的火星坐标，可传入'gcj02'
+                success: function (res) {
+                    var latitude = res.latitude; // 纬度，浮点数，范围为90 ~ -90
+                    var longitude = res.longitude; // 经度，浮点数，范围为180 ~ -180。
+                    var speed = res.speed; // 速度，以米/每秒计
+                    var accuracy = res.accuracy; // 位置精度
+                    $('#latitude').val(latitude)
+                    $('#longitude').val(longitude)
+                    $.get(//上报位置取得机构信息
+                        '/wx/location',
+                        { 'latitude': latitude, 'longitude': longitude },
+                        function (data) {
+                            console.log(data)
+                            $('#organ').append(`<option value="${data.id}">${data.name}</option>`)
+                        })
+                },
+                fail: function (res) {
+                    console.error(res)
+                },
+            })
+        });
+    </script>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <h2 style="text-align: center;margin-bottom: 30px;">授权注册</h2>
+                <div class="alert alert-danger" role="alert" style="{{show_danger}}">
+                    授权失败，可能原因：<br />
+                    1、您的位置不在机构用户范围内<br />
+                    2、信息填写不全<br />
+                    3、您已经取得授权，无需重复
+                </div>
+                <form action="{% url 'auth' %}" method="POST">
+                    <div class="form-group">
+                        <label for="organ">您的机构</label>
+                        <select class="form-control" id="organ" name="organ">
+                            <!-- {% for organ in organs %}
+                                <option value="{{organ.id}}">{{organ.name}}</option>
+                            {% endfor %} -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dept">必填部门</label>
+                        <input type="text" class="form-control" id="dept" name="dept" placeholder="输入部门/院系/科室等" />
+                    </div>
+                    <div class="form-group">
+                        <label for="nickname">必填姓名</label>
+                        <input type="text" class="form-control" id="nickname" name="nickname" placeholder="输入真实姓名" />
+                    </div>
+                    <input class="form-control" id="openid" name="openid" value="{{openid}}" readonly />
+                    <input class="form-control" id="latitude" name="latitude" readonly />
+                    <input class="form-control" id="longitude" name="longitude" readonly />
+                    <button type="submit" class="btn btn-primary btn-block">授权/更新</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- <div class="weui-form">
+            <div class="weui-form__text-area">
+                <h2 class="weui-form__title">表单结构</h2>
+                <div class="weui-form__desc">展示表单页面的信息结构样式, 分别由头部区域/控件区域/提示区域/操作区域和底部信息区域组成。</div>
+            </div>
+            <div class="weui-form__control-area">
+                <div class="weui-cells__group weui-cells__group_form">
+                    <div class="weui-cells__title">表单组标题</div>
+                    <div class="weui-cells weui-cells_form">
+                        <div class="weui-cell weui-cell_active">
+                            <div class="weui-cell__hd"><label class="weui-label">微信号</label></div>
+                            <div class="weui-cell__bd">
+                                <input id="js_input" class="weui-input" placeholder="填写本人微信号"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="weui-form__tips-area">
+                <p class="weui-form__tips">
+                    表单页提示，居中对齐
+                </p>
+            </div>
+            <div class="weui-form__opr-area">
+                <a class="weui-btn weui-btn_primary weui-btn_disabled" href="javascript:" id="showTooltips">确定</a>
+            </div>
+        </div> -->
+</body>
+
+</html>

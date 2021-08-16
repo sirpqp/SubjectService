@@ -1,0 +1,9 @@
+from django.urls import path
+
+from . import views
+
+urlpatterns = [
+    path('<str:short>', views.index, name='index'),
+    path('upload/', views.upload, name='upload'),
+    path('zip/<str:tasks>', views.zip, name='zip'),
+]
