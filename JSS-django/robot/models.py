@@ -3,7 +3,7 @@ from api.models import *
 
 
 class ChatRoom(models.Model):
-    '''微信群'''
+    """微信群"""
     wxid = models.CharField(max_length=64, primary_key=True)
     name = models.CharField('群名', max_length=128)
 
@@ -12,7 +12,7 @@ class ChatRoom(models.Model):
 
 
 class Buddy(models.Model):
-    '''微信用户'''
+    """微信用户"""
     wxid = models.CharField(max_length=20, primary_key=True)
     name = models.CharField('群昵称', max_length=128)
     room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
@@ -29,7 +29,7 @@ role_choices = [
 
 
 class Dialog(models.Model):
-    '''聊天室对话记录'''
+    """聊天室对话记录"""
     room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
     buddy = models.ForeignKey(Buddy, on_delete=models.CASCADE)
     role = models.CharField(choices=role_choices,

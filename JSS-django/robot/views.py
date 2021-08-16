@@ -1,25 +1,26 @@
-﻿from django_filters.rest_framework import DjangoFilterBackend
-
-from rest_framework import viewsets, filters
-from .serializers import *
-from .models import *
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view
-from ai.detroit import Detroit
-from django.http import HttpResponse, JsonResponse
-from api.models import *
-import json
-import time, threading
-from datetime import datetime
-from django.core.exceptions import ObjectDoesNotExist
-from smtplib import SMTPException
-from django.core.mail import send_mail
-import requests
+﻿import json
+import threading
+import time
 import xml.etree.ElementTree as ET
+from datetime import datetime
+from smtplib import SMTPException
+
+import requests
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mail
+from django.http import HttpResponse, JsonResponse
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import status
+from rest_framework import viewsets
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+from ai.detroit import Detroit
+from api.models import *
+from .models import *
+from .serializers import *
 from .words import tag
-from django.conf import settings
-# from multiprocessing import Process
+
 
 class ChatRoomViewSet(viewsets.ModelViewSet):
     """
@@ -44,7 +45,7 @@ class DialogViewSet(viewsets.ModelViewSet):
     queryset = Dialog.objects.all().order_by('-id')
     serializer_class = DialogSerializer
 
-    filter_backends = (DjangoFilterBackend, )
+    filter_backends = (DjangoFilterBackend,)
     filter_fields = ('role', 'state')
 
 
@@ -85,7 +86,7 @@ def easy_dialog(request):
             # p = Process(target=DetroitHandle,
             #             args=(request.data, serializer.validated_data))
             # p.start()
-            t = threading.Thread(target=DetroitHandle, args=(request, ))
+            t = threading.Thread(target=DetroitHandle, args=(request,))
             t.start()
             # t.join()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -142,7 +143,7 @@ def DetroitHandle(request):
                     data_received=datetime.now())
         task.save()
         statistic.task = task
-        #if tagged['特需'] > 0:
+        # if tagged['特需'] > 0:
         #    replyMsg = '您好！您的咨询已经受理，请您耐心等待。'
         #    reply = Dialog(role='AI',
         #                   content=replyMsg,
@@ -178,23 +179,22 @@ def DetroitHandle(request):
             task.save()
             if de.CITATION and (de.CITATION.doi or de.CITATION.pmid):
                 # 自动接单
-               serializer.save(state=2, is_received=True, request=req)
-               auto_reply = Dialog(role='AI',
-                                   content='您好！您的咨询已经受理，请您耐心等待。',
-                                   room=serializer.validated_data['room'],
-                                   buddy=serializer.validated_data['buddy'],
-                                   request=req)
-               auto_reply.save()
+                serializer.save(state=2, is_received=True, request=req)
+                auto_reply = Dialog(role='AI',
+                                    content='您好！您的咨询已经受理，请您耐心等待。',
+                                    room=serializer.validated_data['room'],
+                                    buddy=serializer.validated_data['buddy'],
+                                    request=req)
+                auto_reply.save()
             else:
                 serializer.save(state=2, request=req)
             # 无人值守自动应答
             if time.localtime().tm_hour < 7:
-                night_reply = Dialog(
-                    role='AI',
-                    content='您好！您需要的文献需要人工处理，客服人员上班后会第一时间为您服务！给您带来的不便敬请原谅！！ ',
-                    room=serializer.validated_data['room'],
-                    buddy=serializer.validated_data['buddy'],
-                    request=req)
+                night_reply = Dialog(role='AI',
+                                     content='您好！您需要的文献需要人工处理，客服人员上班后会第一时间为您服务！给您带来的不便敬请原谅！！ ',
+                                     room=serializer.validated_data['room'],
+                                     buddy=serializer.validated_data['buddy'],
+                                     request=req)
                 night_reply.save()
 
         statistic.finish_time = datetime.now()
@@ -220,10 +220,7 @@ def have_a_sit(request, room: str, buddy: str):
 @api_view(['GET'])
 def is_received(request, room: str, buddy: str):
     try:
-        dialogs = Dialog.objects.filter(room=room,
-                                        buddy=buddy,
-                                        role='custom',
-                                        is_received=False)
+        dialogs = Dialog.objects.filter(room=room, buddy=buddy, role='custom', is_received=False)
 
         return JsonResponse({'is_received': len(dialogs) == 0}, safe=False)
     except ObjectDoesNotExist:
@@ -235,14 +232,9 @@ def email_to(request):
     """回复邮件"""
     email = request.POST['email']
     replyMsg = request.POST['replyMsg']
-    recipient_list = []
-    recipient_list.append(email)
+    recipient_list = [email]
     try:
-        send_mail('文献传递',
-                  replyMsg,
-                  'jlss202101@vip.163.com',
-                  recipient_list,
-                  fail_silently=False)
+        send_mail('文献传递', replyMsg, 'jlss202101@vip.163.com', recipient_list, fail_silently=False)
         return JsonResponse({'msg': 'ok'})
     except SMTPException:
         # logging.error(SMTPException)
@@ -252,29 +244,22 @@ def email_to(request):
 @api_view(['POST'])
 def qqbot(request):
     def ignore(id: str):
-        '''屏蔽用户'''
+        """屏蔽用户"""
         ignore_list = [
             2138241371, 3327627472, 2749134869, 2177238858, 1936360081,
             2423040846, 1774234761
         ]
-        return (id in ignore_list)
+        return id in ignore_list
 
     message = {
         'text': '',
-        'buddy': {
-            'id': 0,
-            'name': ''
-        },
-        'group': {
-            'id': 0,
-            'name': ''
-        }
+        'buddy': {'id': 0, 'name': ''},
+        'group': {'id': 0, 'name': ''}
     }
 
     statistic = Statistic(create_time=datetime.now())
 
     def reply(msg: dict, replyMsg: str):
-        # mirai_api = settings.mirai_api
         mirai_api = {
             'host': 'http://127.0.0.1:8080',
             'authKey': 'INITKEYcp7KhYss',
@@ -289,14 +274,9 @@ def qqbot(request):
                                      {"authKey": mirai_api['authKey']}))
             # Authorize
             if auth.status_code == 200 and auth.json()['code'] == 0:
-                verify = requests.post(mirai_api['host'] + '/verify',
-                                       headers=headers,
-                                       data=json.dumps({
-                                           "sessionKey":
-                                           auth.json()['session'],
-                                           "qq":
-                                           mirai_api['qq']
-                                       }))
+                verify = requests.post(mirai_api['host'] + '/verify', headers=headers,
+                                       data=json.dumps({"sessionKey": auth.json()['session'], "qq": mirai_api['qq']}))
+
                 if verify.status_code == 200 and verify.json()['code'] == 0:
                     mirai_api['session'] = auth.json()['session']
                 else:
@@ -306,63 +286,43 @@ def qqbot(request):
         except Exception as ex:
             print(f'验证失败:{ex}')
         try:
-            sendGroupMessage = requests.post(mirai_api['host'] +
-                                             '/sendGroupMessage',
+            sendGroupMessage = requests.post(mirai_api['host'] + '/sendGroupMessage',
                                              data=json.dumps({
-                                                 "sessionKey":
-                                                 str(mirai_api['session']),
-                                                 'target':
-                                                 msg['group']['id'],
-                                                 'messageChain': [{
-                                                     'type':
-                                                     'At',
-                                                     'target':
-                                                     msg['buddy']['id']
-                                                 }, {
-                                                     'type':
-                                                     'Plain',
-                                                     'text':
-                                                     str(replyMsg)
-                                                 }]
+                                                 "sessionKey": str(mirai_api['session']),
+                                                 'target': msg['group']['id'],
+                                                 'messageChain': [{'type': 'At', 'target': msg['buddy']['id']},
+                                                                  {'type': 'Plain', 'text': str(replyMsg)}]
                                              }))
         except Exception as ex:
             print(f'发送失败:{ex}')
 
     def handleTask(msg: dict):
-        '''处理机器人采回的任务'''
+        """处理机器人采回的任务"""
         # 获取群，必要时创建
-        (theGroup,
-         created) = Group.objects.get_or_create(gid=msg['group']['id'],
-                                                is_active=1,
-                                                defaults={
-                                                    'name':
-                                                    msg['group']['name'],
-                                                    'type':
-                                                    'QQ',
-                                                    'gid':
-                                                    msg['group']['id'],
-                                                    'organ':
-                                                    Organ.objects.get(pk=111)
-                                                })
+        (theGroup, created) = Group.objects.get_or_create(
+            gid=msg['group']['id'],
+            is_active=1,
+            defaults={
+                'name': msg['group']['name'],
+                'type': 'QQ',
+                'gid': msg['group']['id'],
+                'organ': Organ.objects.get(pk=111)
+            })
         # 判断是否需要更新群名
         if theGroup.name != msg['group']['name']:
             theGroup.name = msg['group']['name']
             theGroup.save()
         # 获取客户，必要时创建
-        (theCustomer,
-         created) = Customer.objects.get_or_create(qq=msg['buddy']['id'],
-                                                   is_active=1,
-                                                   group=theGroup,
-                                                   defaults={
-                                                       'nickname':
-                                                       msg['buddy']['name'],
-                                                       'qq':
-                                                       msg['buddy']['id'],
-                                                       'group':
-                                                       theGroup,
-                                                       'organ':
-                                                       theGroup.organ
-                                                   })
+        (theCustomer, created) = Customer.objects.get_or_create(
+            qq=msg['buddy']['id'],
+            is_active=1,
+            group=theGroup,
+            defaults={
+                'nickname': msg['buddy']['name'],
+                'qq': msg['buddy']['id'],
+                'group': theGroup,
+                'organ': theGroup.organ
+            })
         # 创建需求
         req = Request(customer=theCustomer,
                       group=theGroup,
@@ -417,7 +377,7 @@ def qqbot(request):
                 task.data_received = None
                 # 自动动接单
                 if (de.CITATION and (de.CITATION.doi or de.CITATION.pmid)) or \
-                    (tagged['需求']!=0 and tagged['需求']>=tagged['答复']+tagged['客套']):
+                        (tagged['需求'] != 0 and tagged['需求'] >= tagged['答复'] + tagged['客套']):
                     replyMsg = '您好！您的咨询已经受理，请您耐心等待。'
                     reply(msg, replyMsg)
                 # 无人值守自动应答
@@ -442,7 +402,6 @@ def qqbot(request):
                 message['text'] += f"[{msg['name']}]"
             elif msg['type'] == 'Plain':
                 message['text'] += msg['text']
-                # message['text'] = message['text'].strip()
             elif msg['type'] == 'Image':
                 message['text'] += '[图片格式]'
             elif msg['type'] == 'File':
@@ -467,7 +426,7 @@ def qqbot(request):
 
 @api_view(['POST'])
 def replyQQ(request):
-    '''回复QQ消息'''
+    """回复QQ消息"""
     task_id = request.data['tid']
     task = Task.objects.get(pk=task_id)
     replyMsg = request.data['content']
@@ -479,20 +438,14 @@ def replyQQ(request):
     }
     headers = {'Content-Type': 'application/json'}
     try:
-        auth = requests.post(mirai_api['host'] + '/auth',
-                             headers=headers,
-                             data=json.dumps({"authKey":
-                                              mirai_api['authKey']}))
+        auth = requests.post(mirai_api['host'] + '/auth', headers=headers,
+                             data=json.dumps({"authKey": mirai_api['authKey']})
+                             )
         # Authorize
         if auth.ok and auth.json()['code'] == 0:
-            verify = requests.post(mirai_api['host'] + '/verify',
-                                   headers=headers,
-                                   data=json.dumps({
-                                       "sessionKey":
-                                       auth.json()['session'],
-                                       "qq":
-                                       mirai_api['qq']
-                                   }))
+            verify = requests.post(mirai_api['host'] + '/verify', headers=headers,
+                                   data=json.dumps({"sessionKey": auth.json()['session'], "qq": mirai_api['qq']})
+                                   )
             if verify.ok and verify.json()['code'] == 0:
                 mirai_api['session'] = auth.json()['session']
             else:
@@ -502,25 +455,12 @@ def replyQQ(request):
     except Exception as ex:
         return HttpResponse(f'验证失败:{ex}', 401)
     try:
-        sendGroupMessage = requests.post(mirai_api['host'] +
-                                         '/sendGroupMessage',
-                                         data=json.dumps({
-                                             "sessionKey":
-                                             str(mirai_api['session']),
-                                             'target':
-                                             task.request.group.gid,
-                                             'messageChain': [{
-                                                 'type':
-                                                 'At',
-                                                 'target':
-                                                 task.request.customer.qq
-                                             }, {
-                                                 'type':
-                                                 'Plain',
-                                                 'text':
-                                                 str(replyMsg)
-                                             }]
-                                         }))
+        sendGroupMessage = requests.post(mirai_api['host'] + '/sendGroupMessage',
+                                         data=json.dumps(
+                                             {"sessionKey": str(mirai_api['session']), 'target': task.request.group.gid,
+                                              'messageChain': [{'type': 'At', 'target': task.request.customer.qq},
+                                                               {'type': 'Plain', 'text': str(replyMsg)}]
+                                              }))
         return HttpResponse('发送成功', 200)
     except Exception as ex:
         print(sendGroupMessage.request.body)

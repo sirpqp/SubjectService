@@ -1,25 +1,6 @@
-﻿import logging
-import math
-import time
-import threading
-import json
-from urllib.parse import quote
-from django.core.mail import send_mail
-# import aiohttp
-# import asyncio
+﻿from django.core.mail import send_mail
 
-from django.utils import timezone
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.shortcuts import render
-from django.conf import settings
 from rest_framework.decorators import api_view
-from wechatpy import parse_message, WeChatClient
-from wechatpy.exceptions import InvalidSignatureException
-from wechatpy.oauth import WeChatOAuth
-from wechatpy.replies import create_reply, ArticlesReply
-from wechatpy.utils import check_signature
-from wechatpy.client.api import WeChatJSAPI
-
 from api.models import *
 from .models import *
 from ai.views import *
@@ -62,6 +43,7 @@ def get_auth(openid):
 
 def index(request):
     """ 首页：微信验证(GET)/接收事件(POST) """
+
     def event_subscribe(msg):
         """订阅事件"""
         logging.info('触发订阅事件：%s', msg)
@@ -83,7 +65,7 @@ def index(request):
         logging.info('触发退订事件：%s', msg)
         user_auth = Auth.objects.filter(
             openid=msg.source).first() if Auth.objects.filter(
-                openid=msg.source).exists() else None
+            openid=msg.source).exists() else None
         if user_auth:
             user_auth.is_active = False
             user_auth.save()
@@ -107,13 +89,10 @@ def index(request):
         try:
             statistic = Statistic(create_time=datetime.now())
             if len(msg.content) <= 5:  # 简单过滤 需求描述不足5字
-                result = create_reply('您好！您的需求\n“{0}”\n过短，请详细描述'.format(
-                    msg.content),
-                                      message=msg)
+                result = create_reply('您好！您的需求\n“{0}”\n过短，请详细描述'.format(msg.content), message=msg)
                 return HttpResponse(result.render())
             # TODO:有效期也要比较
-            the_custom = Auth.objects.get(openid=msg.source,
-                                          is_active=True).Customer  # 强断言必有账号
+            the_custom = Auth.objects.get(openid=msg.source, is_active=True).Customer  # 强断言必有账号
             req = Request(customer=the_custom,
                           group=the_custom.group,
                           description=str(msg.content),
@@ -131,8 +110,7 @@ def index(request):
                     logging.info('分解了任务：%s', line)
                     # 多线程调用AI
                     detroit = Detroit(task, statistic)
-                    ai_task = threading.Thread(target=detroit.start,
-                                               args=(task, msg.source))
+                    ai_task = threading.Thread(target=detroit.start, args=(task, msg.source))
                     ai_task.start()
                     # 异步调用AI
 
@@ -143,13 +121,13 @@ def index(request):
             # reply = TransferCustomerServiceReply(message=msg)
             # return HttpResponse(reply.render())
         except Exception as error:  # 任何错误将触发权限不足响应
-            result = create_reply('您好！您未授权公众号服务或授权已过期，请先去个人中心授权\n{0}'.format(
-                str(error)),
+            result = create_reply('您好！您未授权公众号服务或授权已过期，请先去个人中心授权\n{0}'.format(str(error)),
                                   message=msg)
             return HttpResponse(result.render())
 
     def event_click(msg):
         """菜单点击"""
+
         def click_help(m):
             """点击帮助文档"""
             result = ArticlesReply(message=m, articles=get_materials('help'))
@@ -183,15 +161,10 @@ def index(request):
     elif request.method == 'POST' and request.body:
         msg = parse_message(request.body)
         msg_handle_switch = {
-            'SubscribeEvent':
-            lambda parameter_list: event_subscribe(parameter_list),
-            'UnsubscribeEvent':
-            lambda parameter_list: even_unsubscribe(parameter_list),
-            # 'LocationEvent': event_location(msg),
-            'TextMessage':
-            lambda parameter_list: message_text(parameter_list),
-            'ClickEvent':
-            lambda parameter_list: event_click(parameter_list),
+            'SubscribeEvent': lambda parameter_list: event_subscribe(parameter_list),
+            'UnsubscribeEvent': lambda parameter_list: even_unsubscribe(parameter_list),
+            'TextMessage': lambda parameter_list: message_text(parameter_list),
+            'ClickEvent': lambda parameter_list: event_click(parameter_list),
         }
         return msg_handle_switch[type(msg).__name__](msg)
     else:
@@ -199,22 +172,18 @@ def index(request):
 
 
 def ask(request):
-    def reply(email: str, replyMsg: str, statistic: Statistic, taskid: int=None, name: str=None):
+    def reply(email: str, replyMsg: str, _statistic: Statistic, taskid: int = None, name: str = None):
         """ 回复邮件 """
         recipient_list = [email]
         try:
-            send_mail('文献传递',
-                      replyMsg,
-                      'jlss202101@vip.163.com',
-                      recipient_list,
-                      fail_silently=False)
+            send_mail('文献传递', replyMsg, 'jlss202101@vip.163.com', recipient_list, fail_silently=False)
 
         except SMTPException:
             logging.error(SMTPException)
-            reply(email, replyMsg, statistic)
+            reply(email, replyMsg, _statistic)
 
-        statistic.finish_time = datetime.now()
-        statistic.save()
+        _statistic.finish_time = datetime.now()
+        _statistic.save()
 
     if request.method == 'POST' and request.POST:
         statistic = Statistic(create_time=datetime.now())
@@ -226,8 +195,7 @@ def ask(request):
             # TODO:有效期也要比较
             if not Auth.objects.filter(openid=openid, is_active=True).exists():
                 return JsonResponse({'msg': '未授权或过期'})
-            the_custom = Auth.objects.get(openid=openid,
-                                          is_active=True).Customer  # 强断言必有账号
+            the_custom = Auth.objects.get(openid=openid, is_active=True).Customer  # 强断言必有账号
             req = Request(customer=the_custom,
                           group=the_custom.group,
                           description=str(content),
@@ -236,20 +204,16 @@ def ask(request):
             statistic.request = req
             logging.info('录入了需求：%s', content)
             # 分解多任务
-            task = Task(request=req,
-                        title=content.lstrip().rstrip(),
-                        data_received=datetime.now(),
-                        status='progress')
+            task = Task(request=req, title=content.lstrip().rstrip(), data_received=datetime.now(), status='progress')
             task.save()
             statistic.task = task
             logging.info('创建了任务：%s', task.title)
             # 多线程调用AI
             detroit = Detroit(task, statistic)
-            ai_task = threading.Thread(target=detroit.start,
-                                       args=(the_custom.email, task.id, reply))
+            ai_task = threading.Thread(target=detroit.start, args=(the_custom.email, task.id, reply))
             ai_task.start()
-            # # 异步调用AI
-            # logging.info('开启AI任务：%s', task)
+            # 异步调用AI
+            logging.info('开启AI任务：%s', task)
             return JsonResponse({'msg': '需求已受理'})
         except Exception as error:  # 任何错误将触发权限不足响应
             return JsonResponse({'msg': '服务器错误'})
@@ -285,9 +249,7 @@ def auth(request):
         """获取/创建“公众号群”"""
         groups = Group.objects.filter(type='公众号', organ=organ)
         if len(groups) == 0:  # 机构未建公众号
-            return Group.objects.create(name=organ.name + '公众号',
-                                        type='公众号',
-                                        organ=organ)
+            return Group.objects.create(name=organ.name + '公众号', type='公众号', organ=organ)
         else:
             return groups.first()
 
@@ -305,12 +267,9 @@ def auth(request):
         code = request.GET['code'] if 'code' in request.GET else None
         # https://api.weixin.qq.com/sns/jscode2session?appid=APPID&secret=SECRET&js_code=JSCODE&grant_type=authorization_code
         result = requests.get('https://api.weixin.qq.com/sns/jscode2session',
-                              params={
-                                  'appid': APP_ID,
-                                  'secret': SECRET,
-                                  'js_code': code,
-                                  'grant_type': 'authorization_code'
-                              }).json()
+                              params={'appid': APP_ID, 'secret': SECRET, 'js_code': code,
+                                      'grant_type': 'authorization_code'}
+                              ).json()
         return JsonResponse(result)
 
     if request.method == 'POST' and request.POST:
@@ -334,18 +293,15 @@ def auth(request):
             #                 longitude) <= organ.range:
             #     context['show_danger'] = ''
             #     return render(request, 'auth.html', context)
-            user_auth = Auth.objects.filter(
-                openid=context['openid']).first() if Auth.objects.filter(
-                    openid=context['openid']).exists() else None
+            user_auth = Auth.objects.filter(openid=context['openid']).first() \
+                if Auth.objects.filter(openid=context['openid']).exists() else None
             # 已授权 更新资料&返回授权成功
             if user_auth:
                 user_auth.date_auth = timezone.now()
                 user_auth.is_active = True
                 user_auth.save()
-                user_customer = Customer.objects.filter(
-                    wechat=context['openid']).first(
-                    ) if Customer.objects.filter(
-                        wechat=context['openid']).exists() else None
+                user_customer = Customer.objects.filter(wechat=context['openid']).first() \
+                    if Customer.objects.filter(wechat=context['openid']).exists() else None
                 if user_customer:
                     # 更新用户信息 必有
                     user_customer.nickname = context['nickname']
@@ -357,17 +313,10 @@ def auth(request):
                 return JsonResponse({'更新用户': user_auth.openid})
 
             # 直接新增用户 新增权限 因为所有其他情况都已被排除
-            the_custom = Customer(nickname=context['nickname'],
-                                  wechat=context['openid'],
-                                  dept=context['dept'],
-                                  email=context['email'],
-                                  group=group,
-                                  organ=group.organ)
+            the_custom = Customer(nickname=context['nickname'], wechat=context['openid'], dept=context['dept'],
+                                  email=context['email'], group=group, organ=group.organ)
             the_custom.save()
-            the_auth = Auth(Customer=the_custom,
-                            openid=context['openid'],
-                            latitude=latitude,
-                            longitude=longitude)
+            the_auth = Auth(Customer=the_custom, openid=context['openid'], latitude=latitude, longitude=longitude)
             the_auth.save()
             return JsonResponse({'新增用户': the_auth.openid})
         except Exception as identifier:
@@ -388,8 +337,7 @@ def reply(request):
 
 def mp_verify(request):
     """ 跳转静态目录下的验证文件 """
-    return HttpResponseRedirect(settings.STATIC_URL +
-                                'MP_verify_QiNbvMFQsmegMWio.txt')
+    return HttpResponseRedirect(settings.STATIC_URL + 'MP_verify_QiNbvMFQsmegMWio.txt')
 
 
 def minip_verify(request):
@@ -399,18 +347,17 @@ def minip_verify(request):
 
 def location(request):
     """ GET 给定地理位置找相关机构 """
+
     def get_organ(latitude, longitude):
         organs = []
         for organ in Organ.objects.all():
-            if geo_distance(organ.latitude, organ.longitude, latitude,
-                            longitude) <= organ.range:
+            if geo_distance(organ.latitude, organ.longitude, latitude, longitude) <= organ.range:
                 organs.append(organ)
         if len(organs) == 0:  # 地理范围内没有找到任何机构则以试用机构身份注册
             organs.append(Organ.objects.get(pk=131))
         return organs
 
-    organ = get_organ(float(request.GET['latitude']),
-                      float(request.GET['longitude']))[0]
+    organ = get_organ(float(request.GET['latitude']), float(request.GET['longitude']))[0]
     return JsonResponse({'id': organ.id, 'name': organ.name})
 
 
@@ -421,51 +368,36 @@ def email_to(request):
     taskid = request.POST['taskid']
     state = request.POST['state']
     channel = request.POST['channel']
-    recipient_list = []
-    recipient_list.append(email)
+    recipient_list = [email]
     try:
-        send_mail('文献传递',
-                  replyMsg,
-                  'jlss202101@vip.163.com',
-                  recipient_list,
-                  fail_silently=False)
+        send_mail('文献传递', replyMsg, 'jlss202101@vip.163.com', recipient_list, fail_silently=False)
         return JsonResponse({'msg': 'ok'})
     except SMTPException:
         logging.error(SMTPException)
         email_to(request)
     finally:
         if channel == '医生医事':
-            r = requests.get(
-                f'https://ysfwapp.juhe.com.cn/trans/result?taskid={taskid}&state={state}'
-            )
+            r = requests.get(f'https://ysfwapp.juhe.com.cn/trans/result?taskid={taskid}&state={state}')
         if channel == 'KIS':
-            r = requests.get(
-                f'https://jksmed.juhe.com.cn/trans/result?taskid={taskid}&state={state}'
-            )
+            r = requests.get(f'https://jksmed.juhe.com.cn/trans/result?taskid={taskid}&state={state}')
 
 
 @api_view(['POST'])
 def ask4ysys(request):
-    def reply(email: str, replyMsg: str, statistic, taskid: int, name: str):
+    def reply(email: str, replyMsg: str, _statistic: Statistic, taskid: int, name: str):
         """回复邮件"""
         recipient_list = [email]
         try:
-            send_mail('文献传递',
-                      replyMsg,
-                      'jlss202101@vip.163.com',
-                      recipient_list,
-                      fail_silently=False)
+            send_mail('文献传递', replyMsg, 'jlss202101@vip.163.com', recipient_list, fail_silently=False)
         except SMTPException:
             logging.error(SMTPException)
-            reply(email, replyMsg, statistic, taskid, name)
+            reply(email, replyMsg, _statistic, taskid, name)
         finally:
             if taskid:
-                r = requests.get(
-                    f'https://ysfwapp.juhe.com.cn/trans/result?taskid={taskid}&state=1'
-                )
+                r = requests.get(f'https://ysfwapp.juhe.com.cn/trans/result?taskid={taskid}&state=1')
 
-        statistic.finish_time = datetime.now()
-        statistic.save()
+        _statistic.finish_time = datetime.now()
+        _statistic.save()
 
     if request.method == 'POST' and request.POST:
         openid = request.POST['openid']
@@ -484,15 +416,10 @@ def ask4ysys(request):
             if len(content) <= 5:  # 简单过滤 需求描述不足5字
                 return JsonResponse({'msg': '需求过短'})
 
-            the_custom, created = Customer.objects.update_or_create(
-                wechat=openid,
-                is_active=True,
-                defaults={
-                    'nickname': name,
-                    'email': email,
-                    'group': group,
-                    'organ': organ
-                })
+            the_custom, created = Customer.objects.update_or_create(wechat=openid, is_active=True,
+                                                                    defaults={'nickname': name, 'email': email,
+                                                                              'group': group, 'organ': organ}
+                                                                    )
             statistic = Statistic(create_time=datetime.now())
             req = Request(customer=the_custom,
                           group=the_custom.group,
@@ -511,8 +438,8 @@ def ask4ysys(request):
             # 多线程调用AI
             detroit = Detroit(task, statistic)
             ai_task = threading.Thread(target=detroit.start,
-                                       args=(the_custom.email, task.id, reply,
-                                             ''))
+                                       args=(the_custom.email, task.id, reply, '')
+                                       )
             ai_task.start()
             # # 异步调用AI
             # logging.info('开启AI任务：%s', task)
@@ -523,30 +450,22 @@ def ask4ysys(request):
 
 @api_view(['POST'])
 def ask4open(request):
-    def reply(email: str, replyMsg: str, statistic: Statistic, taskid: int, name: str):
+    def reply(email: str, replyMsg: str, _statistic: Statistic, taskid: int, name: str):
         """回复邮件"""
         recipient_list = [email]
         try:
-            send_mail('文献传递',
-                      replyMsg,
-                      'jlss202101@vip.163.com',
-                      recipient_list,
-                      fail_silently=False)
+            send_mail('文献传递', replyMsg, 'jlss202101@vip.163.com', recipient_list, fail_silently=False)
         except SMTPException:
             logging.error(SMTPException)
-            reply(email, replyMsg, statistic, taskid, name)
+            reply(email, replyMsg, _statistic, taskid, name)
         finally:
             if taskid:
                 if name == '医生医事':
-                    r = requests.get(
-                        f'https://ysfwapp.juhe.com.cn/trans/result?taskid={taskid}&state=1'
-                    )
+                    r = requests.get(f'https://ysfwapp.juhe.com.cn/trans/result?taskid={taskid}&state=1')
                 if name == 'KIS':
-                    r = requests.get(
-                        f'https://jksmed.juhe.com.cn/trans/result?taskid={taskid}&state=1'
-                    )
-        statistic.finish_time = datetime.now()
-        statistic.save()
+                    r = requests.get(f'https://jksmed.juhe.com.cn/trans/result?taskid={taskid}&state=1')
+        _statistic.finish_time = datetime.now()
+        _statistic.save()
 
     if request.method == 'POST' and request.POST:
         logging.info('收到三方需求：%s', request.POST.__dict__)
@@ -555,16 +474,16 @@ def ask4open(request):
         email = request.POST['email']
         jid = request.POST['jid']
         content = request.POST['content']
-        if name == '医生医事':  #医生医事
+        if name == '医生医事':  # 医生医事
             group = Group.objects.get(pk=419)
             organ = Organ.objects.get(pk=225)
-        elif name == 'FPD':  #FPD
+        elif name == 'FPD':  # FPD
             group = Group.objects.get(pk=457)
             organ = Organ.objects.get(pk=111)
-        elif name == 'KIS':  #整合系统
+        elif name == 'KIS':  # 整合系统
             group = Group.objects.get(pk=461)
             organ = Organ.objects.get(pk=111)
-        elif name == 'CQVIP':  #维普智立方
+        elif name == 'CQVIP':  # 维普智立方
             group = Group.objects.get(pk=462)
             organ = Organ.objects.get(pk=244)
         else:
@@ -575,15 +494,10 @@ def ask4open(request):
                 logging.info('错误，返回错误：%s', {'msg': '需求过短'})
                 return JsonResponse({'msg': '需求过短'})
 
-            the_custom, created = Customer.objects.update_or_create(
-                wechat=openid,
-                is_active=True,
-                defaults={
-                    'nickname': name,
-                    'email': email,
-                    'group': group,
-                    'organ': organ
-                })
+            the_custom, created = Customer.objects.update_or_create(wechat=openid, is_active=True,
+                                                                    defaults={'nickname': name, 'email': email,
+                                                                              'group': group, 'organ': organ}
+                                                                    )
             statistic = Statistic(create_time=datetime.now())
             req = Request(customer=the_custom,
                           group=the_custom.group,
@@ -602,8 +516,7 @@ def ask4open(request):
             # 多线程调用AI
             detroit = Detroit(task, statistic)
             ai_task = threading.Thread(target=detroit.start,
-                                       args=(the_custom.email, task.id, reply,
-                                             name))
+                                       args=(the_custom.email, task.id, reply, name))
             ai_task.start()
             # # 异步调用AI
             # logging.info('开启AI任务：%s', task)
