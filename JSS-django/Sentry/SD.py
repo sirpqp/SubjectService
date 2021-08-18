@@ -25,20 +25,28 @@ class SingleDownload:
         return hashlib.md5(f'J{key}h'.encode()).hexdigest().upper()
 
     def download(self, key: str):
-        '''
+        """
         单点下载全文，响应时间可能会很长
-        '''
-        r = requests.post(f'{self.domain}/DownPdf.asmx/GetPdf', {
-            'key': key,
-            'token': self.token(key)
-        })
-        if r.status_code == requests.codes.ok:
-            data = ET.fromstring(r.text).text
-            if data == '无规则' or data == '无权限':
-                return None
-            return f'{self.domain}{data}'
-        else:
-            return None
+        """
+        n = 0
+        fulltext = ''
+        while n < 3:
+            r = requests.post(f'{self.domain}/DownPdf.asmx/GetPdf', {
+                'key': key,
+                'token': '0000',
+                'oa': '0'
+            })
+            if r.status_code == requests.codes.ok:
+                data = ET.fromstring(r.text).text
+                if data == '无规则' or data == '无权限':
+                    break
+                fulltext = f'{self.domain}{data}'
+                break
+            else:
+                n += 1
+                continue
+
+        return fulltext
 
     def task(self):
         '''

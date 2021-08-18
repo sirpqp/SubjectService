@@ -3,6 +3,8 @@ import re
 from datetime import datetime
 from Sentry.SD import SingleDownload
 import requests
+from lxml import etree
+import xml.etree.cElementTree as ET
 
 from api.models import Resource, ResType, Task, User, Statistic
 from .solr import Solr
@@ -140,7 +142,6 @@ class Detroit:
 
     def __init__(self, task: Task, statistic: Statistic = None):
         self.task = task
-        self.statistic = statistic
 
     @staticmethod
     def log(speaker: str, msg: str):
@@ -176,34 +177,30 @@ class Detroit:
         return cit
 
     def jh(self, cit: Cite):
+        """
+        通过solr在聚合库中进行查找pdf全文
+        :param cit: Cite
+        :return: cit
+        """
         self.log('SYS', '开始在jh中查询...')
         so = Solr()
-        # 查询DOI
-        exp = f'doi:{cit.doi}'
-        self.log('JH', f'1.在solr中查询doi,表达式={exp}...')
-        result = so.search(exp)
-        self.log('JH', f'1.solr查询结果={result}')
-        # 查询PMID
-        if not result:
-            exp = f'pmid:{cit.pmid}'
-            self.log('JH', f'2.在solr中查询pmid,表达式={exp}...')
-            result = so.search(exp)
-            self.log('JH', f'2.solr查询结果={result}')
-        # 查询标题
-        if not result:
-            exp = f'title:"{cit.title}"'
-            self.log('JH', f'3.在solr中查询title,表达式={exp}...')
-            result = so.search(exp)
-            self.log('JH', f'3.solr查询结果={result}')
-        # 查询年卷期，功能待开发
-        # TODO:冻结 这是坑。卷没有值，页没有索引，sup没统一
-        if result:
-            if result['doi']:
-                cit.doi = result['doi']
-            if result['title']:
-                cit.title = result['title']
-            cit.lang = result['lang']
-            cit.fulltext = result['download']
+        cate_map = {'doi': cit.doi, 'pmid': cit.pmid, 'title': cit.title}
+        result = None
+        for key, value in cate_map.items():
+            if value:
+                exp = f'{key}:{value}'
+                self.log('JH', f'2.在solr中查询{key},表达式={exp}...')
+                result = so.search(exp)
+                self.log('JH', f'2.solr查询结果={result}')
+
+            if result:
+                if result['doi']:
+                    cit.doi = result['doi']
+                if result['title']:
+                    cit.title = result['title']
+                cit.lang = result['lang']
+                cit.fulltext = result['download']
+
         return cit
 
     def sci(self, cit: Cite):
@@ -249,73 +246,122 @@ class Detroit:
             return cit
 
     def sd(self, cit: Cite):
-        """ 在sci中查找 """
+        """
+        sd检索
+        :param cit: Cite
+        :return: Cite
+        """
         self.log('PC', '检定单点下载')
-        if not (cit.doi or cit.pmid or cit.pmc):
-            self.log('SD', '检定非法，单点下载只支持doi、pmcid、pmid')
-            return cit
         sd = SingleDownload()
-        if cit.doi:
-            self.log('SD', f'1.查询doi:{cit.doi}')
-            cit.fulltext = sd.download(cit.doi)
-            self.log('SD', f'1.查询doi结果:{cit.fulltext}')
-        if not cit.fulltext and cit.pmc:
-            self.log('SD', f'2.查询pmc:{cit.pmc}')
-            cit.fulltext = sd.download(cit.pmc)
-            self.log('SD', f'2.查询pmc结果:{cit.fulltext}')
-        if not cit.fulltext and cit.pmid:
-            self.log('SD', f'3.查询pmid:{cit.pmid}')
-            cit.fulltext = sd.download(cit.pmid)
-            self.log('SD', f'3.查询pmid结果:{cit.fulltext}')
+        cate_map = {'pmc': cit.pmc, 'pmid': cit.pmid, 'doi': cit.doi, 'title': cit.title}
+        for key, value in cate_map.items():
+            if value:
+                self.log('SD', f'查询{key}:{value}')
+                cit.fulltext = sd.download(value)
+                self.log('SD', f'查询{key}结果:{cit.fulltext}')
+
+            if cit.fulltext:
+                break
         self.log('SD', f'查找结果:{cit.__dict__}')
         return cit
 
     def resource(self, cit: Cite):
+        """
+        手动下载的全文检索
+        :param cit: Cite
+        :return: Cite
+        """
         result = ''
         if cit.doi:
             result = Resource.objects.filter(uid=cit.doi).order_by('-id')
         if (not result) and cit.pmid:
-            result = Resource.objects.filter(uid=cit.doi).order_by('-id')
-
+            result = Resource.objects.filter(uid=cit.pmid).order_by('-id')
         if result:
             _Resource = result[0]
-            status = False
-            while not status:
-                resp = requests.get(f'http://api.jlss.vip/s/{_Resource.short}')
-                if resp.text.strip() == '对不起,全文已丢失!':
-                    _Resource.uid = None
-                    _Resource.save()
-                    break
-                if resp.status_code == 200:
-                    self._Resource = _Resource
-                    status = True
-                    self.statistic.resource_lib = 'jh'
-                    self.statistic.channel = 'AI'
-                else:
-                    break
+            resp = requests.get(f'http://api.jlss.vip/s/{_Resource.short}')
+            if (resp.status_code == 200) and resp.text.strip() != '对不起,全文已丢失!':
+                self._Resource = _Resource
+                cit.fulltext = _Resource.download if _Resource.download else resp.url
+            else:
+                _Resource.uid = None
+                _Resource.save()
+
+        return cit
+
+    def play_pmc(self, cit: Cite):
+        """
+        pmc检索
+        :param cit: Cite
+        :return: Cite
+        """
+        if not cit.pmc:
+            return cit
+        pmc_ = str(cit.pmc)
+        if not(pmc_.startswith('PMC') or pmc_.startswith('pmc')):
+            cit.pmc = 'PMC' + pmc_
+
+        if cit.pmc and cit.pii:
+            pdf = f'https://www.ncbi.nlm.nih.gov/pmc/articles/{cit.pmc}/pdf/{cit.pii}.pdf'
+            # TODO: ping pdf
+            cit.fulltext = pdf
+            return cit
+
+        url = f'https://www.ncbi.nlm.nih.gov/pmc/articles/{cit.pmc}/'
+        headers = {
+            'authority': 'www.ncbi.nlm.nih.gov',
+            'cache-control': 'max-age=0',
+            'sec-ch-ua': '"Chromium";v="92", " Not A;Brand";v="99", "Google Chrome";v="92"',
+            'sec-ch-ua-mobile': '?0',
+            'upgrade-insecure-requests': '1',
+            'user-agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36',
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+            'sec-fetch-site': 'none',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-user': '?1',
+            'sec-fetch-dest': 'document',
+            'accept-language': 'zh-CN,zh;q=0.9',
+            'cookie': 'ncbi_sid=5CBC70B4255B939A_9B1DSID; _ga=GA1.2.1144160845.1619407228; _gid=GA1.2.150053158.1629163631; pmc.article.report=; WebEnv=1lUMkn%405CBC70B4255B939A_9B1DSID; ncbi_pinger=N4IgDgTgpgbg+mAFgSwCYgFwgIIBYCcAHAAykCMA7AKxkBCAogML5WmkBMAImZwMz25enRr2IA6MmIC2cXCAA0IAMYAbZEoDWAOygAPAC6ZQxTCABmAVxUqAtPr36barRoDOT5K/3zL1mzGQoAHcfK1t7Aw8XV3lkLR0IGyCIAEMweTAUgHMoG1c0KAAjFIh5Ev11FVzMnIUQMlNyyursqDr2UzALQqkodEVeTu7e/pA5LBTCr1SlQ0UqU3aTLDwiNkoaBmZWNi4efkFhUQlpWXaGrC6evowrkYxJ6ZTZjAA5AHlX+naOy+G+sRaJSFZCAlRSQHIRBiLIAexgdV4+FM7AAbGQ5IpcMsQLxCNi6rhxso1JodAZCajTGYUipXG0sRRTGRREysYRTLh0YTkVhnBobMh7FJ5KKxeKJZKpZLUMhabCsjYzLClBZXHVWKZEPp9GBXBgAPQG1Cw0GwiBZA1kcTWvEG1y4MhUQiomzEdhkN14sieoIai4gDW/EAAHS0AAJI1Ho5GwzH41HXil9BZoOGAArdNSuFBaLLhgDiEFhFjAcYT0fLFbqqOJvhUEX05oAViWIFpaXB642a1SsNB9BBAjAGSBURysLxBIQyB65ABfRQWLQqWEpVDkwwYUDBsBSJSIzr7wmNCAVVSjhZYA1NC+uA3pgCyjAoREIU/wBprpmgSnNo3YHFCGwMhsF4VgZzoZ0ADEZzYeC2FoQDiCQ04OUUD0jyUW59weM9mkNW8qnvJ8XzfD8vww4MghowFgVBFcIS0KEYXhRFBiwGk6VHKdTEHCweInQMBl5Md8GICguTZMYcVRcT8GtaSiVMZdV3XTcNT7Md2GReYmSwExFG5LB8SpRdlFhKQpFheIHCMEAdOZfBAMRHFrRIREAzIZzDNxYNrQJLEOJAcRjkGLErxCjVgu8lz5mJfBeCZed5yAA==; ncbi_sid=5CBC70B4255B939A_9B1DSID; WebEnv=1VKIcc%405CBC70B4255B939A_9B1DSID; pmc.article.report='
+        }
+        resp = requests.get(url, headers=headers)
+        if resp.status_code == requests.codes.ok:
+            try:
+                link = re.search(f'<a href="(/pmc/articles/{cit.pmc}/pdf.*?)">PDF \(\d+K\)</a>', resp.text, re.S).group(1)
+            except Exception as e:
+                return
+            else:
+                fulltext = 'https://www.ncbi.nlm.nih.gov'+link
+                cit.fulltext = fulltext
+
+        return cit
 
     def start(self, email: str, taskid: int, reply, name: str = None):
-        """ 开始异步AI查找 """
+        """
+        开始异步AI查找
+        :param email: 发送的email
+        :param taskid: 任务id
+        :param reply: 回复邮件的函数
+        :param name: 暂未启用
+        :return: None
+        """
         result = self.startx()
         if result:
-            self.statistic.result = 'SU'
-            self.task.status = 'success'
             self.task.data_replied = datetime.now()
             self.task.save()
-            title = json.loads(result)['title']
-            short = json.loads(result)['short']
+            title = self.task.request
+            short = result
             replyMsg = f'老师，您需要的《{title}》已找到，下载链接：http://api.jlss.vip/s/{short}'
-            reply(email, replyMsg, self.statistic, taskid, name)
+            reply(email, replyMsg, taskid, name)
         else:
-            self.statistic.result = 'FA'
-            self.statistic.channel = 'PE'
             self.task.status = 'waiting'
             self.task.data_received = None
             self.task.save()
-            self.statistic.finish_time = datetime.now()
-            self.statistic.save()
 
     def startx(self):
+        statistic = Statistic(create_time=datetime.now())
+        statistic.category = 1
+        statistic.task = self.task
+        statistic.request = self.task.request
+        statistic.save()
         self.log('SYS', '进入人工智能查询>>>')
         self.log('KP', f'探索任务:{self.task}')
         # 正则匹配doi>pmid>title
@@ -326,65 +372,66 @@ class Detroit:
         if not self.EXP:
             self.log('KP', '检定失败，查询表达式为空，GG')
             self.log('SYS', '退出人工智能查询<<<')
-            self.statistic.channel = 'PE'
+            statistic.channel = 'PE'
+            statistic.result = 'FA'
             return None
         key = self.EXP.split(':')[0]
         value = self.EXP.split(':')[1].replace('\"', '')
 
         # 保存正则结果
-        self.statistic.re_lib = key
-        self.statistic.retrieval_str = value
+        statistic.re_lib = key
+        statistic.retrieval_str = value
 
         # 获取题录信息
         self.log('PC', '去PubMed查询citation')
         self.CITATION = Cite(key, value)
 
-        # 首先查找人工源
-        self.resource(self.CITATION)
-        if self._Resource:
-            self.handleTask(self.CITATION)
-
         # 接口查询结果
-        self.statistic.author = self.CITATION.author_list
-        self.statistic.last_author = self.CITATION.last_author
-        self.statistic.title = self.CITATION.title
-        self.statistic.doi = self.CITATION.doi
-        self.statistic.pmid = self.CITATION.pmid
-        self.statistic.pmc = self.CITATION.pmc
-        self.statistic.pii = self.CITATION.pii
-        self.statistic.issn = self.CITATION.issn
-        self.statistic.year = self.CITATION.year
-        self.statistic.volume = self.CITATION.volume
-        self.statistic.pages = self.CITATION.pages
+        statistic.author = self.CITATION.author_list
+        statistic.last_author = self.CITATION.last_author
+        statistic.title = self.CITATION.title
+        statistic.doi = self.CITATION.doi
+        statistic.pmid = self.CITATION.pmid
+        statistic.pmc = self.CITATION.pmc
+        statistic.pii = self.CITATION.pii
+        statistic.issn = self.CITATION.issn
+        statistic.year = self.CITATION.year
+        statistic.volume = self.CITATION.volume
+        statistic.pages = self.CITATION.pages
 
+        # 查询途径标识
         sources_map = {
-            0: 'jh',
-            1: 'sci',
-            2: 'sd',
+            0: 'manual',
+            1: 'pmc',
+            2: 'jh',
+            3: 'sci',
+            4: 'sd',
         }
-        if self.RESULT:
-            return self.RESULT
-
         # 遍历查询各个源
         cur_sources = 0
-        SOURCES = [self.jh, self.sci, self.sd]
+        SOURCES = [self.resource, self.play_pmc, self.jh, self.sci, self.sd]
         while (not self.CITATION.fulltext) and cur_sources < len(SOURCES):
             self.CITATION = SOURCES[cur_sources](self.CITATION)
             self.log('KP', f'CITATION更新：{self.CITATION.__dict__}')
             if self.CITATION.fulltext:
-                self.handleTask(self.CITATION)
-                self.statistic.result = 'SU'
-                self.statistic.channel = 'AI'
-                self.statistic.resource_lib = sources_map.get(cur_sources)
+                # 进行任务与源的绑定，生成短域名
+                statistic = self.handleTask(self.CITATION, statistic)
+                # 绑定查询的途径标识
+                statistic.resource_lib = sources_map.get(cur_sources)
                 break
             cur_sources += 1
         else:
             self.log('PC', f'所有源查找完，结果为{self.CITATION.__dict__}')
         # 退出AI
         self.log('SYS', '退出人工智能查询<<<')
+        if not self.RESULT:
+            statistic.channel = 'PE'
+            statistic.result = 'FA'
+        statistic.finish_time = datetime.now()
+        statistic.save()
         return self.RESULT
 
-    def handleTask(self, cit: Cite):
+    def handleTask(self, cit: Cite, statistic):
         try:
             # 受理任务
             self.log('PC', '受理任务')
@@ -408,7 +455,9 @@ class Detroit:
                 resource = Resource(restype=ResType.objects.get(pk=7), download=cit.fulltext, title=cit.title,
                                     uid=cit.doi, lang=cit.lang)
                 resource.save()
-            self.statistic.resource = resource
+            statistic.resource = resource
+            statistic.result = 'SU'
+            statistic.channel = 'AI'
             self.log('KP', f'生成了资源:{resource}')
             # 关联资源，任务成功
             self.log('PC', '关联资源')
@@ -421,6 +470,7 @@ class Detroit:
                            f'任务状态更新为:{self.task.status}')
             self.log('KP', '自动查找成功，任务完成<<<')
             self.RESULT = resource.short
+            return statistic
 
         except Exception as identifier:
             self.log('SYS', f'任务失败：{identifier}')
@@ -428,3 +478,4 @@ class Detroit:
             self.task.save()
             self.RESULT = None
             self.log('KP', f'任务结束,自动查询失败,等待人工处理')
+            return statistic

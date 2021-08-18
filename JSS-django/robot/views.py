@@ -21,7 +21,8 @@ from .models import *
 from .serializers import *
 from .words import tag
 
-authKey = 'INITKEYmIVot2km'
+authKey = 'INITKEYcp7KhYss'
+qq = '2138241371'
 
 
 class ChatRoomViewSet(viewsets.ModelViewSet):
@@ -259,13 +260,11 @@ def qqbot(request):
         'group': {'id': 0, 'name': ''}
     }
 
-    statistic = Statistic(create_time=datetime.now())
-
     def reply(msg: dict, replyMsg: str):
         mirai_api = {
             'host': 'http://127.0.0.1:8080',
             'authKey': authKey,
-            'qq': '2138241371',
+            'qq': qq,
             'session': ''
         }
         headers = {'Content-Type': 'application/json'}
@@ -331,38 +330,29 @@ def qqbot(request):
                       description=msg['text'],
                       registrar=User.objects.get(pk=1))
         req.save()
-        statistic.request = req
 
         tagged = tag(req.description)
         if tagged['公告'] > 0 or (len(req.description) > 0
                                 and tagged['length'] <= 5):
-            statistic.category = 2
-            statistic.result = 'TH'
             return '不需要处理'
         # 创建任务（暂不分解）
         task = Task(request=req, title=req.description)
         task.save()
 
-        statistic.task = task
-
         if tagged['特需'] > 0:
             replyMsg = '您好！您的咨询已经受理，请您耐心等待。'
             reply(msg, replyMsg)
 
-            statistic.category = 0
-            statistic.channel = 'PE'
-
             return '无需调用AI'
         else:
-            statistic.category = 1
             task.status = 'progress'
             task.data_received = datetime.now()
             task.save()
             # 调用AI
-            de = Detroit(task, statistic)
+            de = Detroit(task)
             result = de.startx()
+
             if result:
-                statistic.result = 'SU'
                 # 有结果，自动查找成功
                 task.status = 'success'
                 task.data_replied = datetime.now()
@@ -371,10 +361,10 @@ def qqbot(request):
                 title = task.request
                 short = result
                 replyMsg = f'您需要的《{title}》已找到，下载链接：http://api.jlss.vip/s/{short}'
-                reply(msg, replyMsg)
+                print(replyMsg)
+                # reply(msg, replyMsg)
             else:
-                statistic.channel = 'PE'
-                statistic.result = 'FA'
+                print('无')
                 task.status = 'waiting'
                 task.data_received = None
                 # 自动动接单
@@ -421,8 +411,6 @@ def qqbot(request):
         # print(message)
         handleTask(message)
 
-    statistic.finish_time = datetime.now()
-    statistic.save()
     return JsonResponse({'msg': 'ok'})
 
 
@@ -435,7 +423,7 @@ def replyQQ(request):
     mirai_api = {
         'host': 'http://127.0.0.1:8080',
         'authKey': authKey,
-        'qq': '2177238858',
+        'qq': qq,
         'session': ''
     }
     headers = {'Content-Type': 'application/json'}

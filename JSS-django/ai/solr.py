@@ -16,7 +16,8 @@ UPDATE BY: QUAN
 class Solr(pysolr.Solr):
     """ 继承pysolr的轻量solr代理 """
     SOLRURL = r'http://129.28.159.224:8180/solr/jhpdf/'
-    BASEINDEXFILE = r'E:\SolrIndex\index\dbindex\jhres_dat_{datfilename}_db.dat'
+    # BASEINDEXFILE = r'E:\SolrIndex\index\dbindex\jhres_dat_{datfilename}_db.dat'
+    BASEINDEXFILE = r'\\192.168.0.201\ai-index\dbindex\jhres_{datfilename}_db.dat'
     FULLTEXT = r'http://61.128.134.70:5555//QQSearch/downloadpdf_new.jsp?resid={resid}&pdfpath={pdfpath}'
 
     def __init__(self, url=SOLRURL):
