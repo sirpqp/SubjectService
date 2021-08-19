@@ -3,7 +3,6 @@ import re
 from datetime import datetime
 from Sentry.SD import SingleDownload
 import requests
-from lxml import etree
 import xml.etree.cElementTree as ET
 
 from api.models import Resource, ResType, Task, User, Statistic
@@ -80,7 +79,6 @@ class Cite:
     def __init__(self, key: str, value: str):
         self.key = key
         self.value = value
-        self.search()
 
     def search(self):
         if self.key == 'pmid':
@@ -296,8 +294,8 @@ class Detroit:
         """
         if not cit.pmc:
             return cit
-        pmc_ = str(cit.pmc)
-        if not(pmc_.startswith('PMC') or pmc_.startswith('pmc')):
+        pmc_ = str(cit.pmc).upper()
+        if not(pmc_.startswith('PMC')):
             cit.pmc = 'PMC' + pmc_
 
         if cit.pmc and cit.pii:
@@ -325,7 +323,9 @@ class Detroit:
         resp = requests.get(url, headers=headers)
         if resp.status_code == requests.codes.ok:
             try:
-                link = re.search(f'<a href="(/pmc/articles/{cit.pmc}/pdf.*?)">PDF \(\d+K\)</a>', resp.text, re.S).group(1)
+                link = re.search(
+                    f'<a href="(/pmc/articles/{cit.pmc}/pdf/.*?pdf)">PDF \(\d+\.?\d*[M,K]?\)</a>', resp.text, re.S
+                ).group(1)
             except Exception as e:
                 return
             else:
@@ -384,7 +384,12 @@ class Detroit:
 
         # 获取题录信息
         self.log('PC', '去PubMed查询citation')
-        self.CITATION = Cite(key, value)
+        ci = Cite(key, value)
+        try:
+            ci.search()
+        except Exception as e:
+            self.log('Cite', f'Pubmed查询失败：{e}')
+        self.CITATION = ci
 
         # 接口查询结果
         statistic.author = self.CITATION.author_list
