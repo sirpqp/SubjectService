@@ -15,7 +15,7 @@ import json
 Entrez.email = 'odinshaw@live.com'
 
 logging.config.fileConfig('log.conf')
-logger = logging.getLogger('ai')
+logger = logging.getLogger('ai_1')
 
 """
 time: 2021-08-13
@@ -28,35 +28,70 @@ class ReLibs:
     """ 正则库 """
 
     def __init__(self, text: str):
-        self.text = text
+        self.text = text.replace('doi', 'DOI').replace('pmid', 'PMID').replace('pmc', 'PMC')
+
+    def _check_truth(self, key: str, seq: list):
+        start = 0
+        jump = 11
+        checked = []
+        for i in seq:
+            if key in i:
+                checked.append(i)
+                continue
+            if len(self.text) > jump:
+                start = self.text.index(i)-11
+                end = self.text.index(i)
+            else:
+                end = len(i)+1
+            if self.text[start:end].index(key):
+                checked.append(i)
+
+        return checked
 
     @staticmethod
     def doi(text: str):
-        pattern = re.compile(r'\b10.\d{4}/\S+\b', re.I)
-        _match = re.search(pattern, text)
-        if _match:
-            return _match.group()
-        else:
+        result = re.findall(r'\b10.\d{4}/\S+\b', text, re.I)
+        if len(result) == 1:
+            return result[0]
+        elif len(result) == 0:
             return None
+        else:
+            return 'Multi'
 
     @staticmethod
     def pmid(text: str):
-        pattern = re.compile(r'\b\d{7,8}\b', re.I)
-        _match = re.search(pattern, text)
-        if _match:
-            return _match.group()
-        else:
+        result = re.findall(r'\b[^PMC,^/,^0,^\.]\d{7,8}\b', text, re.I)
+        if len(result) == 1:
+            return result[0]
+        elif len(result) == 0:
             return None
+        else:
+            return 'Multi'
+
+    @staticmethod
+    def pmcid(cls, text: str):
+        result = re.findall(r'PMC[ID, ]*\d+', text, re.I)
+        checked = cls._check_truth('PMC', result)
+        if len(checked) == 1:
+            return checked[0].replace('ID', '').replace('id', '')
+        elif len(checked) == 0:
+            return None
+        else:
+            return 'Multi'
 
     def search(self):
         _doi = self.doi(self.text)
         _pmid = self.pmid(self.text)
+
+        if _doi == 'Multi' or _pmid == 'Multi':
+            return None
+
         if _doi:
-            return f'doi:{_doi}'
+            return f'doi:_:{_doi}'
         elif _pmid:
-            return f'pmid:{_pmid}'
+            return f'pmid:_:{_pmid}'
         else:
-            return 'title:"{}"'.format(self.text.replace('\"', ''))
+            return f'title:_:{self.text}'
 
 
 class Cite:
@@ -166,14 +201,6 @@ class Detroit:
         else:
             return result
 
-    def pmc(self, cit: Cite):
-        self.log('PC', '检定PMC')
-        if cit.pmc and cit.pii:
-            pdf = f'https://www.ncbi.nlm.nih.gov/pmc/articles/{cit.pmc}/pdf/{cit.pii}.pdf'
-            # TODO: ping pdf
-            cit.fulltext = pdf
-        return cit
-
     def jh(self, cit: Cite):
         """
         通过solr在聚合库中进行查找pdf全文
@@ -187,9 +214,9 @@ class Detroit:
         for key, value in cate_map.items():
             if value:
                 exp = f'{key}:{value}'
-                self.log('JH', f'2.在solr中查询{key},表达式={exp}...')
+                self.log('JH', f'在solr中查询{key},表达式={exp}...')
                 result = so.search(exp)
-                self.log('JH', f'2.solr查询结果={result}')
+                self.log('JH', f'solr查询结果={result}')
 
             if result:
                 if result['doi']:
@@ -207,41 +234,43 @@ class Detroit:
         if not cit.doi:
             self.log('SCI', '检定非法，Scihub只受理DOI')
             return cit
-        domain_list = ['https://sci-hub.do', 'https://sci-hub.se', 'https://sci-hub.st']
+        domain_list = [
+            'https://sci-hub.do', 'https://sci-hub.se', 'https://sci-hub.st', 'https://www.sci-hub.shop',
+            'https://sci-hub.mksa.top', 'https://sci-hub.ee', 'https://sci-hub.ren'
+        ]
+        for domain in domain_list:
+            try:
+                Detroit.log('SCI', f'随机分配到域名{domain}')
+            except Exception as identifier:
+                Detroit.log('SCI', f'PING错误:{identifier}')
+                return cit
 
-        try:
-            domain = domain_list[random.randint(0, len(domain_list) - 1)]
-            Detroit.log('SCI', f'随机分配到域名{domain}')
-        except Exception as identifier:
-            Detroit.log('SCI', f'PING错误:{identifier}')
-            return cit
+            # 爬取全文地址
+            try:
+                # https://sci-hub.se/10.1001/archopht.1991.01080080021010
+                headers = {
+                    'User-Agent':
+                        'User-Agent:Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, '
+                        'like Gecko) Chrome/56.0.2924.87 Safari/537.36 '
+                }
+                html = requests.get(f'{domain}/{cit.doi}', headers=headers, timeout=6.1).text
+                if html:
+                    pdf = re.search(r'location.href=\'(\S+.pdf)', html).group(1)
+                    pdf = pdf.replace('\\', '')
+                    if not pdf.startswith('http'):
+                        pdf = 'http:%s' % pdf
+                    Detroit.log('SCI', f'爬得全文地址:{pdf}')
+                    cit.fulltext = pdf
+                    cit.lang = 'F'
+                    break
+            except Timeout as identifier:
+                Detroit.log('SCI', f'超时')
+                continue
+            except Exception as identifier:
+                Detroit.log('SCI', f'爬取全文地址错误:{identifier}')
+                continue
 
-        # 爬取全文地址
-        try:
-            # https://sci-hub.se/10.1001/archopht.1991.01080080021010
-            headers = {
-                'User-Agent':
-                    'User-Agent:Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, '
-                    'like Gecko) Chrome/56.0.2924.87 Safari/537.36 '
-            }
-            html = requests.get('%s/%s' % (domain, cit.doi),
-                                headers=headers,
-                                timeout=6.1).text
-            if html:
-                pdf = re.search(r'location.href=\'(\S+.pdf)', html).group(1)
-                pdf = pdf.replace('\\', '')
-                if not pdf.startswith('http'):
-                    pdf = 'http:%s' % pdf
-                Detroit.log('SCI', f'爬得全文地址:{pdf}')
-                cit.fulltext = pdf
-                cit.lang = 'F'
-            return cit
-        except Timeout as identifier:
-            Detroit.log('SCI', f'超时重试')
-            return self.sci(cit)
-        except Exception as identifier:
-            Detroit.log('SCI', f'爬取全文地址错误:{identifier}')
-            return cit
+        return cit
 
     def sd(self, cit: Cite):
         """
@@ -260,7 +289,7 @@ class Detroit:
 
             if cit.fulltext:
                 break
-        self.log('SD', f'查找结果:{cit.__dict__}')
+        self.log('SD', f'查找结果:{cit.fulltext}')
         return cit
 
     def resource(self, cit: Cite):
@@ -298,12 +327,6 @@ class Detroit:
         if not(pmc_.startswith('PMC')):
             cit.pmc = 'PMC' + pmc_
 
-        if cit.pmc and cit.pii:
-            pdf = f'https://www.ncbi.nlm.nih.gov/pmc/articles/{cit.pmc}/pdf/{cit.pii}.pdf'
-            # TODO: ping pdf
-            cit.fulltext = pdf
-            return cit
-
         url = f'https://www.ncbi.nlm.nih.gov/pmc/articles/{cit.pmc}/'
         headers = {
             'authority': 'www.ncbi.nlm.nih.gov',
@@ -327,7 +350,7 @@ class Detroit:
                     f'<a href="(/pmc/articles/{cit.pmc}/pdf/.*?pdf)">PDF \(\d+\.?\d*[M,K]?\)</a>', resp.text, re.S
                 ).group(1)
             except Exception as e:
-                return
+                return cit
             else:
                 fulltext = 'https://www.ncbi.nlm.nih.gov'+link
                 cit.fulltext = fulltext
@@ -356,12 +379,7 @@ class Detroit:
             self.task.data_received = None
             self.task.save()
 
-    def startx(self):
-        statistic = Statistic(create_time=datetime.now())
-        statistic.category = 1
-        statistic.task = self.task
-        statistic.request = self.task.request
-        statistic.save()
+    def find_auto(self, statistic):
         self.log('SYS', '进入人工智能查询>>>')
         self.log('KP', f'探索任务:{self.task}')
         # 正则匹配doi>pmid>title
@@ -374,9 +392,8 @@ class Detroit:
             self.log('SYS', '退出人工智能查询<<<')
             statistic.channel = 'PE'
             statistic.result = 'FA'
-            return None
-        key = self.EXP.split(':')[0]
-        value = self.EXP.split(':')[1].replace('\"', '')
+            return statistic
+        key, value = self.EXP.split(':_:')
 
         # 保存正则结果
         statistic.re_lib = key
@@ -390,6 +407,15 @@ class Detroit:
         except Exception as e:
             self.log('Cite', f'Pubmed查询失败：{e}')
         self.CITATION = ci
+
+        if not self.CITATION.pmc:
+            _pmc = ReLibs.pmcid(_re, value)
+            if _pmc == 'Multi':
+                statistic.channel = 'PE'
+                statistic.result = 'FA'
+                return statistic
+            else:
+                self.CITATION.pmc = _pmc
 
         # 接口查询结果
         statistic.author = self.CITATION.author_list
@@ -417,7 +443,6 @@ class Detroit:
         SOURCES = [self.resource, self.play_pmc, self.jh, self.sci, self.sd]
         while (not self.CITATION.fulltext) and cur_sources < len(SOURCES):
             self.CITATION = SOURCES[cur_sources](self.CITATION)
-            self.log('KP', f'CITATION更新：{self.CITATION.__dict__}')
             if self.CITATION.fulltext:
                 # 进行任务与源的绑定，生成短域名
                 statistic = self.handleTask(self.CITATION, statistic)
@@ -426,9 +451,87 @@ class Detroit:
                 break
             cur_sources += 1
         else:
-            self.log('PC', f'所有源查找完，结果为{self.CITATION.__dict__}')
+            self.log('PC', f'所有源查找完，结果为{self.CITATION.fulltext}')
         # 退出AI
         self.log('SYS', '退出人工智能查询<<<')
+        return statistic
+
+    def startx(self):
+        statistic = Statistic(create_time=datetime.now())
+        statistic.category = 1
+        statistic.task = self.task
+        statistic.request = self.task.request
+        statistic.save()
+        # self.log('SYS', '进入人工智能查询>>>')
+        # self.log('KP', f'探索任务:{self.task}')
+        # # 正则匹配doi>pmid>title
+        # self.log('PC', '进行正则检定')
+        # _re = ReLibs(self.task.title)
+        # self.EXP = _re.search()  # TODO:支持多条检索
+        # self.log('KP', f'检定成功，分析出exp={self.EXP}')
+        # if not self.EXP:
+        #     self.log('KP', '检定失败，查询表达式为空，GG')
+        #     self.log('SYS', '退出人工智能查询<<<')
+        #     statistic.channel = 'PE'
+        #     statistic.result = 'FA'
+        #     return None
+        # key, value = self.EXP.split(':_:')
+        #
+        # # 保存正则结果
+        # statistic.re_lib = key
+        # statistic.retrieval_str = value
+        #
+        # # 获取题录信息
+        # self.log('PC', '去PubMed查询citation')
+        # ci = Cite(key, value)
+        # try:
+        #     ci.search()
+        # except Exception as e:
+        #     self.log('Cite', f'Pubmed查询失败：{e}')
+        # self.CITATION = ci
+        #
+        # # 接口查询结果
+        # statistic.author = self.CITATION.author_list
+        # statistic.last_author = self.CITATION.last_author
+        # statistic.title = self.CITATION.title
+        # statistic.doi = self.CITATION.doi
+        # statistic.pmid = self.CITATION.pmid
+        # statistic.pmc = self.CITATION.pmc
+        # statistic.pii = self.CITATION.pii
+        # statistic.issn = self.CITATION.issn
+        # statistic.year = self.CITATION.year
+        # statistic.volume = self.CITATION.volume
+        # statistic.pages = self.CITATION.pages
+        #
+        # # 查询途径标识
+        # sources_map = {
+        #     0: 'manual',
+        #     1: 'pmc',
+        #     2: 'jh',
+        #     3: 'sci',
+        #     4: 'sd',
+        # }
+        # # 遍历查询各个源
+        # cur_sources = 0
+        # SOURCES = [self.resource, self.play_pmc, self.jh, self.sci, self.sd]
+        # while (not self.CITATION.fulltext) and cur_sources < len(SOURCES):
+        #     self.CITATION = SOURCES[cur_sources](self.CITATION)
+        #     self.log('KP', f'CITATION更新：{self.CITATION.fulltext}')
+        #     if self.CITATION.fulltext:
+        #         # 进行任务与源的绑定，生成短域名
+        #         statistic = self.handleTask(self.CITATION, statistic)
+        #         # 绑定查询的途径标识
+        #         statistic.resource_lib = sources_map.get(cur_sources)
+        #         break
+        #     cur_sources += 1
+        # else:
+        #     self.log('PC', f'所有源查找完，结果为{self.CITATION.fulltext}')
+        # # 退出AI
+        # self.log('SYS', '退出人工智能查询<<<')
+        try:
+            statistic = self.find_auto(statistic)
+        except Exception as e:
+            self.log('ERROR', f'ERROR:{e}')
         if not self.RESULT:
             statistic.channel = 'PE'
             statistic.result = 'FA'

@@ -126,15 +126,12 @@ def DetroitHandle(request):
             newCustomer.save()
             theCustomer = newCustomer
 
-        statistic = Statistic(create_time=datetime.now())
-
         # 创建需求
         req = Request(customer=theCustomer,
                       group=theGroup,
                       description=str(serializer.validated_data['content']),
                       registrar=User.objects.get(pk=1))
         req.save()
-        statistic.request = req
         tagged = tag(req.description)
         if tagged['公告'] > 0 or (len(req.description) > 0
                                 and tagged['length'] <= 5):
@@ -145,7 +142,6 @@ def DetroitHandle(request):
                     status='progress',
                     data_received=datetime.now())
         task.save()
-        statistic.task = task
         # if tagged['特需'] > 0:
         #    replyMsg = '您好！您的咨询已经受理，请您耐心等待。'
         #    reply = Dialog(role='AI',
@@ -156,7 +152,7 @@ def DetroitHandle(request):
         #    reply.save()
         #    return '无需调用AI'
         # 调用AI
-        de = Detroit(task, statistic)
+        de = Detroit(task)
         result = de.startx()
         if result:
             serializer.save(state=1, is_received=True, request=req)
@@ -173,10 +169,7 @@ def DetroitHandle(request):
                            buddy=serializer.validated_data['buddy'],
                            request=req)
             reply.save()
-            statistic.result = 'SU'
         else:
-            statistic.result = 'FA'
-            statistic.channel = 'PE'
             task.status = 'waiting'
             task.data_received = None
             task.save()
@@ -199,9 +192,6 @@ def DetroitHandle(request):
                                      buddy=serializer.validated_data['buddy'],
                                      request=req)
                 night_reply.save()
-
-        statistic.finish_time = datetime.now()
-        statistic.save()
 
 
 @api_view(['PUT'])

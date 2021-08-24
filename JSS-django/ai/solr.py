@@ -1,8 +1,8 @@
-﻿import pysolr
+﻿import requests
+import pysolr
 import json
 import xml.etree.ElementTree as ET
 import urllib.parse
-
 
 """
 Author: XIAOYAO
@@ -33,7 +33,7 @@ class Solr(pysolr.Solr):
                     pdfpath = item.get('pdfpath_other') or item.get('pdfpath')
                     if not pdfpath:
                         return None
-                    
+
                     # 文件路径
                     DatFile = self.BASEINDEXFILE.format(datfilename=item['datpos'].split(':')[0])
                     # 打开二进制源 读取xml字符串
@@ -56,6 +56,13 @@ class Solr(pysolr.Solr):
                         'download': self.FULLTEXT.format(resid=res + xml.findtext('resid'),
                                                          pdfpath=urllib.parse.quote(pdfpath))
                     }
+
+                    # try:
+                    #     if requests.get(record['download']).text.strip() == '对不起,全文已丢失!':
+                    #         return None
+                    # except Exception as e:
+                    #     return None
+
                     return record
 
             # 未命中
@@ -100,30 +107,30 @@ class Solr_CMJD(pysolr.Solr):
                         f'<?xml version="1.0"?><record>{xml_str}</record>')
                     record = {
                         'doi':
-                        xml.findtext('doi'),
+                            xml.findtext('doi'),
                         'pmid':
-                        xml.findtext('pmid'),
+                            xml.findtext('pmid'),
                         'wos':
-                        xml.findtext('wos'),
+                            xml.findtext('wos'),
                         'journal':
-                        xml.findtext('name_c') if xml.findtext('res') == '1'
-                        else xml.findtext('name_e'),
+                            xml.findtext('name_c') if xml.findtext('res') == '1'
+                            else xml.findtext('name_e'),
                         'title':
-                        xml.findtext('title_c') if xml.findtext('res') == '1'
-                        else xml.findtext('title_e'),
+                            xml.findtext('title_c') if xml.findtext('res') == '1'
+                            else xml.findtext('title_e'),
                         'lang':
-                        'ZH' if xml.findtext('res') == '1' else 'F',
+                            'ZH' if xml.findtext('res') == '1' else 'F',
                         'res':
-                        xml.findtext('res'),
+                            xml.findtext('res'),
                         # 'year': xml.findtext('year'),
                         # 'issn': xml.findtext('issn'),
                         # 'volume': xml.findtext('volume'),
                         # 'issue': xml.findtext('issue'),
                         'download':
-                        self.FULLTEXT.format(
-                            resid=xml.findtext('resid'),
-                            pdfpath=urllib.parse.quote(
-                                r'\\外刊全文\\' + xml.findtext('pdfpath')[22:]))
+                            self.FULLTEXT.format(
+                                resid=xml.findtext('resid'),
+                                pdfpath=urllib.parse.quote(
+                                    r'\\外刊全文\\' + xml.findtext('pdfpath')[22:]))
                     }
                     return record
 

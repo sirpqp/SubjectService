@@ -498,23 +498,20 @@ def ask4open(request):
                                                                     defaults={'nickname': name, 'email': email,
                                                                               'group': group, 'organ': organ}
                                                                     )
-            statistic = Statistic(create_time=datetime.now())
             req = Request(customer=the_custom,
                           group=the_custom.group,
                           description=str(content),
                           registrar=User.objects.get(pk=1))
             req.save()
-            statistic.request = req
             logging.info('录入了需求：%s', content)
             # 分解多任务
             task = Task(request=req,
                         title=content.lstrip().rstrip(),
                         status='progress')
             task.save()
-            statistic.task = task
             logging.info('创建了任务：%s', task.title)
             # 多线程调用AI
-            detroit = Detroit(task, statistic)
+            detroit = Detroit(task)
             ai_task = threading.Thread(target=detroit.start,
                                        args=(the_custom.email, task.id, reply, name))
             ai_task.start()
